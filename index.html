@@ -80,13 +80,8 @@
     let a = 150; 
     let c = 100; 
 
-    // 모드 1
     let tracePoints = [];
-    
-    // 모드 2
     let activeAngle = null;
-
-    // 모드 3
     let rays = [];
     let activeLightSource = 1; 
 
@@ -144,7 +139,6 @@
         pop();
     }
 
-    // --- 첨자를 포함한 텍스트 렌더링 함수 ---
     function drawSubText(mainText, subText, x, y, size, col) {
         push();
         fill(col || 0); noStroke();
@@ -207,7 +201,6 @@
         noFill(); stroke(180); strokeWeight(3/zoom);
         ellipse(0, 0, 2*a, 2*b);
 
-        // 상호작용 가능한 포인트들
         let checkPts = [
             {x: 0, y: 0, label: "중심"},
             {x: -c, y: 0, label: "F", sub: "1", prefix: "초점 "},
@@ -225,17 +218,15 @@
             }
         }
 
-        // 점 그리기
         fill(100); noStroke();
         ellipse(a, 0, 8/zoom); ellipse(-a, 0, 8/zoom); 
         ellipse(0, b, 8/zoom); ellipse(0, -b, 8/zoom); 
         fill(0); ellipse(0, 0, 8/zoom);
         fill(0, 122, 255); ellipse(-c, 0, 15/zoom); ellipse(c, 0, 15/zoom);
 
-        // Hover 시 텍스트 및 효과
         if (hoveredPt) {
             fill(255, 204, 0, 100); noStroke();
-            ellipse(hoveredPt.x, hoveredPt.y, 35/zoom); // 강조 원
+            ellipse(hoveredPt.x, hoveredPt.y, 35/zoom); 
             
             fill(0); textSize(15/zoom);
             if (hoveredPt.sub) {
@@ -246,7 +237,6 @@
                 text(hoveredPt.label, hoveredPt.x, hoveredPt.y - 18/zoom);
             }
         } else {
-            // 안 댈 때는 작게 초점 이름만 렌더링
             drawSubText("F", "1", -c, -15/zoom, 12/zoom, 100);
             drawSubText("F", "2", c, -15/zoom, 12/zoom, 100);
         }
@@ -271,7 +261,6 @@
         }
     }
 
-    // --- 광학 물리 엔진: 빛과 타원의 교점 구하기 ---
     function getEllipseIntersection(sx, sy, dx, dy, a, b) {
         let A = (dx*dx)/(a*a) + (dy*dy)/(b*b);
         let B = 2*sx*dx/(a*a) + 2*sy*dy/(b*b);
@@ -279,14 +268,12 @@
         let det = B*B - 4*A*C;
         if (det < 0) return null; 
         
-        // 빛이 전진해야 하므로 무조건 양수 t를 선택
         let t1 = (-B + Math.sqrt(det)) / (2*A);
         let t2 = (-B - Math.sqrt(det)) / (2*A);
         let t = Math.max(t1, t2); 
         return createVector(sx + t*dx, sy + t*dy);
     }
 
-    // 경로 상의 거리에 따른 위치 추적
     function getPosAlongPath(path, dists, d) {
         if (d <= 0) return path[0];
         let currentDist = 0;
@@ -325,24 +312,21 @@
 
         if (mouseIsPressed && mouseButton === LEFT && !isOverUI()) {
             if (frameCount % 10 === 0) {
-                // 연속 반사 경로 생성 로직 (5번 연속 튕김)
                 let p_curr = createVector(sourcePos, 0);
                 let p_other = createVector(targetPos, 0);
                 let dir = createVector(worldMX - sourcePos, worldMY).normalize();
                 
                 let bouncePath = [p_curr.copy()];
                 
-                for (let bounce = 0; bounce < 5; bounce++) {
+                // 정확히 2번만 부딪히고 원래 초점으로 돌아오도록 수정
+                for (let bounce = 0; bounce < 2; bounce++) {
                     let p_hit = getEllipseIntersection(p_curr.x, p_curr.y, dir.x, dir.y, a, b);
                     if (!p_hit) break;
                     
-                    bouncePath.push(p_hit); // 타원 벽에 부딪힘
-                    bouncePath.push(p_other.copy()); // 반대쪽 초점 통과
+                    bouncePath.push(p_hit);
+                    bouncePath.push(p_other.copy());
                     
-                    // 초점을 관통한 다음 빛의 방향 (초점에서 부딪힌 곳의 연장선)
                     dir = p5.Vector.sub(p_other, p_hit).normalize();
-                    
-                    // 다음 턴을 위해 초점 역할 교대
                     p_curr = p_other;
                     p_other = (p_curr.x === c) ? createVector(-c, 0) : createVector(c, 0);
                 }
@@ -354,7 +338,6 @@
                     dists.push(d); totalD += d;
                 }
 
-                // 총합 거리(sumDists) 미리 계산해두기 (각도 UI 표시 타이밍용)
                 let sumDists = [0];
                 for(let i=0; i<dists.length; i++) sumDists.push(sumDists[i] + dists[i]);
 
@@ -365,6 +348,7 @@
         let speed = 25 / zoom;
         let beamLen = 100 / zoom; 
         let showAngle = document.getElementById('angleCheck').checked;
+        let angleDrawn = false; // 글씨 겹침(깜빡임) 방지를 위한 플래그
 
         for (let i = rays.length - 1; i >= 0; i--) {
             let r = rays[i];
@@ -390,46 +374,45 @@
 
             noStroke(); fill(255, 255, 255, 200); ellipse(headPos.x, headPos.y, 8/zoom);
 
-            if (showAngle) {
-                // 빛이 부딪히는 각 지점(인덱스 1, 3, 5...)에서 각도 표시
-                for (let k = 1; k < r.path.length - 1; k += 2) {
-                    let hitDist = r.sumDists[k];
-                    // 빛이 지점을 막 통과한 후 120프레임 동안만 각도 표시
-                    if (r.progress > hitDist && r.progress < hitDist + 120/zoom) {
-                        let px = r.path[k].x; let py = r.path[k].y;
-                        
-                        let nx = px / (a*a); let ny = py / (b*b);
-                        let vNorm = createVector(nx, ny).normalize();
-                        if (vNorm.dot(createVector(-px, -py)) < 0) vNorm.mult(-1);
-                        let vTan = createVector(-vNorm.y, vNorm.x);
+            if (showAngle && r.path.length > 2) {
+                let k = 1; 
+                let hitDist = r.sumDists[k];
+                // 빛이 부딪힌 이후 광선이 사라질 때까지 각도 표시 (단, 가장 최근 것 1개만 그려 깜빡임 방지)
+                if (r.progress > hitDist && !angleDrawn) {
+                    angleDrawn = true; // 이번 프레임에서는 한 번만 렌더링하도록 락(lock)
+                    
+                    let px = r.path[k].x; let py = r.path[k].y;
+                    let nx = px / (a*a); let ny = py / (b*b);
+                    let vNorm = createVector(nx, ny).normalize();
+                    if (vNorm.dot(createVector(-px, -py)) < 0) vNorm.mult(-1);
+                    let vTan = createVector(-vNorm.y, vNorm.x);
 
-                        stroke(40, 167, 69, 150); strokeWeight(2/zoom); drawingContext.setLineDash([6, 6]);
-                        line(px - vTan.x*80/zoom, py - vTan.y*80/zoom, px + vTan.x*80/zoom, py + vTan.y*80/zoom);
-                        drawingContext.setLineDash([]);
-                        
-                        stroke(255, 136, 0, 180); strokeWeight(2/zoom);
-                        line(px, py, px + vNorm.x*60/zoom, py + vNorm.y*60/zoom);
+                    stroke(40, 167, 69, 150); strokeWeight(2/zoom); drawingContext.setLineDash([6, 6]);
+                    line(px - vTan.x*80/zoom, py - vTan.y*80/zoom, px + vTan.x*80/zoom, py + vTan.y*80/zoom);
+                    drawingContext.setLineDash([]);
+                    
+                    stroke(255, 136, 0, 180); strokeWeight(2/zoom);
+                    line(px, py, px + vNorm.x*60/zoom, py + vNorm.y*60/zoom);
 
-                        let vInc = createVector(r.path[k-1].x - px, r.path[k-1].y - py).normalize();
-                        let vRef = createVector(r.path[k+1].x - px, r.path[k+1].y - py).normalize();
-                        let angleDeg = degrees(acos(vInc.dot(vNorm))).toFixed(1);
+                    let vInc = createVector(r.path[k-1].x - px, r.path[k-1].y - py).normalize();
+                    let vRef = createVector(r.path[k+1].x - px, r.path[k+1].y - py).normalize();
+                    let angleDeg = degrees(acos(vInc.dot(vNorm))).toFixed(1);
 
-                        let rArc = 35 / zoom;
-                        noFill(); stroke(255, 100, 0, 150); strokeWeight(2/zoom);
-                        let drawArc = (v1, v2) => {
-                            let a1 = v1.heading(); let a2 = v2.heading();
-                            let start = min(a1, a2); let stop = max(a1, a2);
-                            if (stop - start > PI) { start = stop; stop = min(a1,a2) + TWO_PI; }
-                            arc(px, py, rArc*2, rArc*2, start, stop);
-                        };
-                        drawArc(vNorm, vInc); drawArc(vNorm, vRef);
+                    let rArc = 35 / zoom;
+                    noFill(); stroke(255, 100, 0, 150); strokeWeight(2/zoom);
+                    let drawArc = (v1, v2) => {
+                        let a1 = v1.heading(); let a2 = v2.heading();
+                        let start = min(a1, a2); let stop = max(a1, a2);
+                        if (stop - start > PI) { start = stop; stop = min(a1,a2) + TWO_PI; }
+                        arc(px, py, rArc*2, rArc*2, start, stop);
+                    };
+                    drawArc(vNorm, vInc); drawArc(vNorm, vRef);
 
-                        fill(255, 100, 0); noStroke(); textSize(12/zoom); textAlign(CENTER, CENTER);
-                        let txtInc = p5.Vector.add(vInc, vNorm).normalize().mult(55/zoom);
-                        let txtRef = p5.Vector.add(vRef, vNorm).normalize().mult(55/zoom);
-                        text(angleDeg + "°", px + txtInc.x, py + txtInc.y);
-                        text(angleDeg + "°", px + txtRef.x, py + txtRef.y);
-                    }
+                    fill(255, 100, 0); noStroke(); textSize(12/zoom); textAlign(CENTER, CENTER);
+                    let txtInc = p5.Vector.add(vInc, vNorm).normalize().mult(55/zoom);
+                    let txtRef = p5.Vector.add(vRef, vNorm).normalize().mult(55/zoom);
+                    text(angleDeg + "°", px + txtInc.x, py + txtInc.y);
+                    text(angleDeg + "°", px + txtRef.x, py + txtRef.y);
                 }
             }
             if (tail > r.totalDist) rays.splice(i, 1);
@@ -463,7 +446,7 @@
         let ins = document.getElementById('instructions');
         if (mode === 1) ins.innerHTML = "마우스를 <b>바깥쪽으로 팽팽하게 당긴 채</b> 둥글게 돌려보세요.<br>실의 최대 길이 밖으로 나가도 연필이 타원 궤도를 따라가며 그려집니다.";
         else if (mode === 2) ins.innerHTML = "꼭짓점, 중심, 초점에 <b>마우스를 올려보세요.</b><br>타원 위의 선을 <b>클릭하여 드래그</b>하면 거리의 합이 일정함을 볼 수 있습니다.";
-        else if (mode === 3) ins.innerHTML = "타원 내부를 <b>클릭하여 꾹 누르고 계세요.</b><br>빛이 타원 내부에서 계속 반사되며 초점을 번갈아 통과하는 궤적을 그립니다.";
+        else if (mode === 3) ins.innerHTML = "타원 내부를 <b>클릭하여 꾹 누르고 계세요.</b><br>빛이 반대편 초점을 지나 다시 처음 자리로 돌아오는 궤적을 그립니다.";
     }
 
     function resetData() { tracePoints = []; activeAngle = null; rays = []; }
