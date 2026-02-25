@@ -20,41 +20,19 @@
         .ui-item label { font-size: 14px; font-weight: bold; color: #333; min-width: 90px; }
 
         button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        button.reset { background: #ff3b30; margin-top: 10px; }
+        button.reset { background: #ff3b30; margin-top: 5px; }
+        button.info { background: #17a2b8; margin-top: 5px; }
         
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 150px;
-            height: 8px;
-            border-radius: 5px;
-            background: #d3d3d3;
-            outline: none;
-            opacity: 0.7;
-            -webkit-transition: .2s;
-            transition: opacity .2s;
-        }
+        input[type=range] { -webkit-appearance: none; width: 140px; height: 8px; border-radius: 5px; background: #d3d3d3; outline: none; transition: .2s; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #007bff; cursor: pointer; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
+        
+        #angleUi { display: none; align-items: center; background: rgba(255,255,255,0.95); padding: 10px 15px; border-radius: 8px; font-weight: bold; font-size: 14px; color: #333; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; border: 2px solid #007bff; margin-top: 5px;}
+        #angleUi input { margin-right: 8px; cursor: pointer; width: 16px; height: 16px; }
 
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #007bff;
-            cursor: pointer;
-            box-shadow: 0 0 5px rgba(0,0,0,0.2);
-        }
+        #infoBox { display: none; position: absolute; top: 120px; right: 20px; width: 320px; background: rgba(255, 255, 255, 0.95); padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border-left: 5px solid #17a2b8; font-size: 14px; line-height: 1.6; color: #333; z-index: 1001; }
+        #infoBox h3 { margin-top: 0; margin-bottom: 12px; color: #17a2b8; font-size: 18px; }
 
-        input[type=range]::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #007bff;
-            cursor: pointer;
-            box-shadow: 0 0 5px rgba(0,0,0,0.2);
-        }
-
-        #instructions { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 12px 24px; border-radius: 30px; font-size: 14px; pointer-events: none; z-index: 1001; text-align: center; line-height: 1.5; }
+        #instructions { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 12px 24px; border-radius: 30px; font-size: 14px; pointer-events: none; z-index: 1001; text-align: center; line-height: 1.5; white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -69,18 +47,25 @@
 
 <div id="ui-layer">
     <div class="ui-item">
-        <label for="focalDistSlider">초점 간 거리 (2c):</label>
-        <input type="range" id="focalDistSlider" min="50" max="400" value="200" step="10">
-        <span id="focalDistValue">200</span>
+        <label>초점 거리 (2c):</label>
+        <input type="range" id="cSlider" min="50" max="400" value="200" step="10">
+        <span id="cValue">200</span>
     </div>
     <div class="ui-item">
-        <label for="stringLenSlider">실의 길이 (2a):</label>
-        <input type="range" id="stringLenSlider" min="200" max="600" value="300" step="10">
-        <span id="stringLenValue">300</span>
+        <label>실의 길이 (2a):</label>
+        <input type="range" id="aSlider" min="200" max="600" value="300" step="10">
+        <span id="aValue">300</span>
     </div>
-    <button id="resetBtn" class="reset" onclick="resetData()">자취 초기화</button>
+    <button id="resetBtn" class="reset" onclick="resetData()">데이터 초기화</button>
+    <button onclick="resetView()">화면 위치 초기화</button>
+    <button id="infoToggleBtn" class="info" onclick="toggleInfo()">📖 개념 설명 켜기</button>
+    
+    <label id="angleUi">
+        <input type="checkbox" id="angleCheck"> 입사각 / 반사각 보기
+    </label>
 </div>
 
+<div id="infoBox"></div>
 <div id="instructions"></div>
 
 <script>
@@ -88,62 +73,54 @@
     let zoom = 1.0;
     let offsetX = 0, offsetY = 0;
     
-    // 타원 관련 데이터
-    let f1, f2; // 두 초점
-    let c = 100; // 원점에서 초점까지의 거리 (2c는 초점 간 거리)
-    let a = 150; // 실의 절반 길이 (2a는 실의 총 길이)
+    // 타원 변수 (a: 장축 절반, c: 초점까지 거리, b: 단축 절반)
+    let a = 150; 
+    let c = 100; 
 
-    let tracePoints = []; // 자취를 저장할 배열
-    let isDrawing = false; // 현재 자취를 그리고 있는지 여부
+    // 모드 1 자취
+    let tracePoints = [];
+    
+    // 모드 2 상호작용
+    let activeAngle = null;
 
-    // UI 엘리먼트
-    let focalDistSlider, stringLenSlider;
-    let focalDistValueSpan, stringLenValueSpan;
+    // 모드 3 광학
+    let rays = [];
+
+    let isInfoOpen = false;
+    const conceptTexts = {
+        1: "<h3>자취 작도 원리</h3>타원은 <b>두 초점으로부터의 거리의 합이 일정한 점들의 집합</b>입니다.<br><br>• <b>파란색 점</b>: 고정된 두 개의 못(초점)<br>• <b>실의 길이</b>: 타원의 장축(가장 긴 지름) 길이와 같습니다.<br><br>마우스(연필)로 실을 바깥쪽으로 팽팽하게 당기면서 빙~ 둘러보세요. 자연스럽게 타원이 그려집니다.",
+        2: "<h3>타원의 정의</h3>어느 위치에 있든 <b>두 초점(F1, F2)까지의 거리의 합이 항상 일정(2a)</b>합니다.<br><br>• <b>초점(Focus)</b>: 중심이 되는 고정점 2개<br>• <b>장축(Major Axis)</b>: 타원의 가장 긴 지름<br>• <b>단축(Minor Axis)</b>: 타원의 가장 짧은 지름<br>• <b>중심(Center)</b>: 두 초점의 정중앙",
+        3: "<h3>타원의 광학적 성질</h3>타원 내부에서 한 초점(F1)을 향해 쏜 빛이나 소리는 타원 벽면에 반사된 후, <b>반드시 다른 쪽 초점(F2)을 통과</b>하게 됩니다.<br><br>• <b>활용 예시</b>: 체외 충격파 쇄석기(한 초점에서 충격파를 발생시켜 다른 초점에 위치한 결석을 깸), 속삭이는 회랑(한 초점에서 속삭이면 다른 초점의 사람에게만 잘 들림)"
+    };
 
     function setup() {
         createCanvas(windowWidth, windowHeight);
-        document.oncontextmenu = () => false; // 우클릭 메뉴 방지
+        document.oncontextmenu = () => false;
 
-        // 초점 및 실 길이 초기 설정
-        f1 = createVector(-c, 0);
-        f2 = createVector(c, 0);
+        let cSlider = select('#cSlider');
+        let aSlider = select('#aSlider');
+        let cVal = select('#cValue');
+        let aVal = select('#aValue');
 
-        // UI 요소 연결
-        focalDistSlider = select('#focalDistSlider');
-        stringLenSlider = select('#stringLenSlider');
-        focalDistValueSpan = select('#focalDistValue');
-        stringLenValueSpan = select('#stringLenValue');
-
-        // 슬라이더 이벤트 리스너
-        focalDistSlider.input(() => {
-            c = focalDistSlider.value() / 2;
-            f1.x = -c;
-            f2.x = c;
-            focalDistValueSpan.html(focalDistSlider.value());
-            // 실의 길이가 초점 간 거리보다 항상 길도록 보정
-            if (stringLenSlider.value() <= focalDistSlider.value()) {
-                stringLenSlider.value(focalDistSlider.value() + 20);
-                stringLenValueSpan.html(stringLenSlider.value());
-                a = stringLenSlider.value() / 2;
+        cSlider.input(() => {
+            c = cSlider.value() / 2;
+            cVal.html(cSlider.value());
+            if (aSlider.value() <= cSlider.value()) {
+                aSlider.value(parseInt(cSlider.value()) + 20);
+                aVal.html(aSlider.value());
+                a = aSlider.value() / 2;
             }
-            resetData(); // 설정 변경 시 자취 초기화
+            resetData();
         });
 
-        stringLenSlider.input(() => {
-            a = stringLenSlider.value() / 2;
-            stringLenValueSpan.html(stringLenSlider.value());
-            // 실의 길이가 초점 간 거리보다 항상 길도록 보정
-            if (stringLenSlider.value() <= focalDistSlider.value()) {
-                stringLenSlider.value(focalDistSlider.value() + 20);
-                stringLenValueSpan.html(stringLenSlider.value());
-                a = stringLenSlider.value() / 2;
+        aSlider.input(() => {
+            if (aSlider.value() <= cSlider.value()) {
+                aSlider.value(parseInt(cSlider.value()) + 20);
             }
-            resetData(); // 설정 변경 시 자취 초기화
+            a = aSlider.value() / 2;
+            aVal.html(aSlider.value());
+            resetData();
         });
-
-        // 초기 UI 값 표시
-        focalDistValueSpan.html(focalDistSlider.value());
-        stringLenValueSpan.html(stringLenSlider.value());
 
         updateInstruction();
     }
@@ -157,88 +134,241 @@
         drawGrid();
 
         if (mode === 1) runMode1();
-        // else if (mode === 2) runMode2();
-        // else if (mode === 3) runMode3();
+        else if (mode === 2) runMode2();
+        else if (mode === 3) runMode3();
         
         pop();
     }
 
-    // --- 1번: 자취 작도 모드 (실과 연필) ---
+    // --- 1번: 자취 작도 모드 ---
     function runMode1() {
         let worldMX = (mouseX - width/2 - offsetX) / zoom;
         let worldMY = (mouseY - height/2 - offsetY) / zoom;
-        let penPos = createVector(worldMX, worldMY);
+        let b = sqrt(a*a - c*c);
 
-        // 두 초점 그리기 (못)
+        // 초점
         fill(0, 122, 255); noStroke();
-        ellipse(f1.x, f1.y, 15/zoom);
-        ellipse(f2.x, f2.y, 15/zoom);
-        textSize(16/zoom); textAlign(CENTER, CENTER); fill(0);
-        text("F1", f1.x, f1.y - 20/zoom);
-        text("F2", f2.x, f2.y - 20/zoom);
+        ellipse(-c, 0, 15/zoom); ellipse(c, 0, 15/zoom);
+        textSize(16/zoom); textAlign(CENTER); fill(0);
+        text("F1", -c, -15/zoom); text("F2", c, -15/zoom);
 
-        // 실의 흐느적거림 표현 (마우스가 눌리지 않았을 때)
-        if (!isDrawing) {
+        let d1 = dist(worldMX, worldMY, -c, 0);
+        let d2 = dist(worldMX, worldMY, c, 0);
+        
+        let penX = worldMX;
+        let penY = worldMY;
+
+        if (mouseIsPressed && mouseButton === LEFT && !isOverUI()) {
+            // 마우스가 실의 최대 길이 밖으로 나가면(또는 일치하면), 팽팽한 상태로 타원 위에 구속
+            if (d1 + d2 >= 2 * a) {
+                let angle = atan2(worldMY, worldMX);
+                penX = a * cos(angle);
+                penY = b * sin(angle);
+                
+                tracePoints.push(createVector(penX, penY));
+
+                // 팽팽한 실
+                stroke(50); strokeWeight(3/zoom);
+                line(-c, 0, penX, penY);
+                line(c, 0, penX, penY);
+            } else {
+                // 느슨한 실
+                stroke(150, 150, 150, 100); strokeWeight(3/zoom); noFill();
+                beginShape();
+                vertex(-c, 0);
+                quadraticVertex(worldMX, worldMY + 50/zoom, c, 0); 
+                endShape();
+            }
+            
+            // 연필 그리기
+            fill(100); noStroke(); ellipse(penX, penY, 10/zoom);
+            fill(200, 100, 0); rect(penX - 2/zoom, penY - 15/zoom, 4/zoom, 20/zoom);
+        } else {
+            // 마우스를 안 누르면 그냥 축 처진 실만 보임
             stroke(150, 150, 150, 100); strokeWeight(3/zoom); noFill();
             beginShape();
-            vertex(f1.x, f1.y);
-            // 두 초점 사이의 중간 지점을 기준으로 베지에 곡선 그리기
-            let midX = (f1.x + f2.x) / 2;
-            let midY = (f1.y + f2.y) / 2 + (50 / zoom); // 살짝 아래로 처지게
-            quadraticVertex(midX, midY, f2.x, f2.y);
+            vertex(-c, 0);
+            quadraticVertex(0, 60/zoom, c, 0); 
             endShape();
         }
 
-        // 마우스가 눌렸을 때 (연필이 실을 당길 때)
-        if (mouseIsPressed && mouseButton === LEFT && !isOverUI()) {
-            let d1 = p5.Vector.dist(penPos, f1);
-            let d2 = p5.Vector.dist(penPos, f2);
-
-            // 실의 길이가 팽팽하게 유지될 수 있는지 확인 (오차 범위 내)
-            if (abs(d1 + d2 - (a * 2)) < 5 / zoom) { 
-                isDrawing = true;
-                tracePoints.push(penPos.copy()); // 현재 연필 위치를 자취에 추가
-
-                // 팽팽한 실 그리기
-                stroke(50, 50, 50); strokeWeight(3/zoom);
-                line(f1.x, f1.y, penPos.x, penPos.y);
-                line(f2.x, f2.y, penPos.x, penPos.y);
-            } else {
-                // 실을 팽팽하게 당기지 못하는 경우, 흐느적거리는 실 + 연필만 표시
-                isDrawing = false;
-                stroke(150, 150, 150, 100); strokeWeight(3/zoom); noFill();
-                beginShape();
-                vertex(f1.x, f1.y);
-                let midX = (f1.x + f2.x) / 2;
-                let midY = (f1.y + f2.y) / 2 + (50 / zoom); 
-                quadraticVertex(midX, midY, f2.x, f2.y);
-                endShape();
-            }
-        } else {
-            isDrawing = false;
-        }
-
-        // 그려진 자취 그리기
+        // 그려진 자취
         noFill(); stroke(50, 50, 200); strokeWeight(3/zoom);
         beginShape();
-        for (let p of tracePoints) {
-            vertex(p.x, p.y);
-        }
+        for (let p of tracePoints) vertex(p.x, p.y);
         endShape();
+    }
 
-        // 연필 그리기
-        fill(100); noStroke(); ellipse(penPos.x, penPos.y, 10/zoom);
-        fill(200, 100, 0); noStroke(); rect(penPos.x - 2/zoom, penPos.y - 15/zoom, 4/zoom, 20/zoom);
+    // --- 2번: 정의 학습 모드 ---
+    function runMode2() {
+        let b = sqrt(a*a - c*c);
+        let worldMX = (mouseX - width/2 - offsetX) / zoom;
+        let worldMY = (mouseY - height/2 - offsetY) / zoom;
+
+        // 타원 배경선
+        noFill(); stroke(180); strokeWeight(3/zoom);
+        ellipse(0, 0, 2*a, 2*b);
+
+        // 초점
+        fill(0, 122, 255); noStroke(); ellipse(-c, 0, 15/zoom); ellipse(c, 0, 15/zoom);
         
-        // 실의 길이가 초점 간 거리보다 짧으면 안내 메시지
-        if ((a * 2) <= (c * 2)) {
-            fill(255, 59, 48); noStroke(); textSize(18/zoom); textAlign(CENTER, BOTTOM);
-            text("경고: 실의 길이는 초점 간 거리보다 길어야 합니다!", 0, -height/2 + 150/zoom);
+        // 중심
+        fill(0); ellipse(0, 0, 8/zoom);
+
+        // 용어 표시
+        let hovered = false;
+        if (dist(worldMX, worldMY, -c, 0) < 30/zoom) { text("초점(F1)", -c, -20/zoom); hovered = true; }
+        if (dist(worldMX, worldMY, c, 0) < 30/zoom) { text("초점(F2)", c, -20/zoom); hovered = true; }
+        if (dist(worldMX, worldMY, 0, 0) < 30/zoom) { text("중심", 0, -15/zoom); hovered = true; }
+        if (dist(worldMX, worldMY, a, 0) < 30/zoom || dist(worldMX, worldMY, -a, 0) < 30/zoom) { fill(0); text("장축의 꼭짓점", worldMX, worldMY - 15/zoom); hovered = true; }
+
+        if (mouseIsPressed && !isOverUI() && !hovered) {
+            activeAngle = atan2(worldMY, worldMX);
+        }
+
+        if (activeAngle !== null) {
+            let px = a * cos(activeAngle);
+            let py = b * sin(activeAngle);
+
+            let d1 = dist(px, py, -c, 0);
+            let d2 = dist(px, py, c, 0);
+
+            stroke(34, 197, 94); strokeWeight(3/zoom);
+            line(-c, 0, px, py); line(c, 0, px, py);
+
+            fill(34, 197, 94); noStroke(); ellipse(px, py, 12/zoom);
+            
+            fill(0); textSize(15/zoom); textAlign(CENTER);
+            text("d1: " + d1.toFixed(1), (-c + px)/2, py/2 - 10/zoom);
+            text("d2: " + d2.toFixed(1), (c + px)/2, py/2 - 10/zoom);
+            
+            fill(255, 59, 48); textSize(18/zoom); fontStyle = BOLD;
+            text("거리의 합 (d1+d2) = " + (d1+d2).toFixed(1) + " (일정)", 0, -b - 40/zoom);
         }
     }
 
-    function mouseReleased() {
-        isDrawing = false;
+    function getPosAlongPath(path, d) {
+        if (d <= 0) return path[0];
+        let d1 = p5.Vector.dist(path[0], path[1]);
+        if (d <= d1) return p5.Vector.lerp(path[0], path[1], d/d1);
+        let d2 = p5.Vector.dist(path[1], path[2]);
+        if (d <= d1 + d2) return p5.Vector.lerp(path[1], path[2], (d-d1)/d2);
+        return path[2];
+    }
+
+    // --- 3번: 광학 성질 모드 ---
+    function runMode3() {
+        let b = sqrt(a*a - c*c);
+        let worldMX = (mouseX - width/2 - offsetX) / zoom;
+        let worldMY = (mouseY - height/2 - offsetY) / zoom;
+
+        // 타원 배경
+        noFill(); stroke(50, 50, 200); strokeWeight(4/zoom);
+        ellipse(0, 0, 2*a, 2*b);
+
+        // 초점 (F1에서 빛 발사)
+        fill(255, 215, 0); noStroke(); ellipse(-c, 0, 20/zoom); // 전구(F1)
+        fill(0, 122, 255); ellipse(c, 0, 15/zoom); // 타겟(F2)
+        fill(0); textSize(16/zoom); textAlign(CENTER);
+        text("광원(F1)", -c, -20/zoom); text("초점(F2)", c, -20/zoom);
+
+        if (mouseIsPressed && mouseButton === LEFT && !isOverUI()) {
+            if (frameCount % 10 === 0) {
+                let angle = atan2(worldMY, worldMX); // 마우스 방향으로 발사
+                let px = a * cos(angle);
+                let py = b * sin(angle);
+                
+                let p0 = createVector(-c, 0);
+                let p1 = createVector(px, py);
+                let p2 = createVector(c, 0);
+
+                let totalD = p5.Vector.dist(p0, p1) + p5.Vector.dist(p1, p2);
+                rays.push({ path: [p0, p1, p2], progress: 0, totalDist: totalD });
+            }
+        }
+
+        let speed = 25 / zoom;
+        let beamLen = 100 / zoom; 
+
+        let showAngle = document.getElementById('angleCheck').checked;
+
+        for (let i = rays.length - 1; i >= 0; i--) {
+            let r = rays[i];
+            r.progress += speed;
+
+            stroke(255, 204, 0, 40); strokeWeight(2/zoom);
+            line(r.path[0].x, r.path[0].y, r.path[1].x, r.path[1].y);
+            if (r.progress > p5.Vector.dist(r.path[0], r.path[1])) {
+                line(r.path[1].x, r.path[1].y, r.path[2].x, r.path[2].y);
+            }
+
+            let head = r.progress;
+            let tail = max(0, r.progress - beamLen);
+
+            noFill(); stroke(255, 220, 0); strokeWeight(6/zoom);
+            beginShape();
+            for (let d = tail; d <= head; d += 5/zoom) {
+                let pos = getPosAlongPath(r.path, d);
+                vertex(pos.x, pos.y);
+            }
+            let headPos = getPosAlongPath(r.path, head);
+            vertex(headPos.x, headPos.y);
+            endShape();
+
+            noStroke(); fill(255, 255, 255, 200); ellipse(headPos.x, headPos.y, 8/zoom);
+
+            // 입사각/반사각 표시 (빛이 튕기는 순간만)
+            let d1 = p5.Vector.dist(r.path[0], r.path[1]);
+            if (showAngle && r.progress > d1 && r.progress < d1 + 30/zoom) {
+                let px = r.path[1].x; let py = r.path[1].y;
+                
+                // 법선 벡터 계산 (타원 방정식의 그래디언트)
+                let nx = px / (a*a); let ny = py / (b*b);
+                let vNorm = createVector(nx, ny).normalize();
+                
+                // 빛이 안쪽으로 반사되므로 법선 방향 뒤집기
+                if (vNorm.dot(createVector(-px, -py)) < 0) vNorm.mult(-1);
+                
+                // 접선 벡터
+                let vTan = createVector(-vNorm.y, vNorm.x);
+
+                // 접선 그리기
+                stroke(40, 167, 69, 180); strokeWeight(2/zoom); drawingContext.setLineDash([6, 6]);
+                line(px - vTan.x*100/zoom, py - vTan.y*100/zoom, px + vTan.x*100/zoom, py + vTan.y*100/zoom);
+                drawingContext.setLineDash([]);
+                fill(40, 167, 69); noStroke(); textSize(14/zoom); 
+                text("접선", px + vTan.x*110/zoom, py + vTan.y*110/zoom);
+
+                // 법선 그리기
+                stroke(255, 136, 0, 220); strokeWeight(2/zoom);
+                line(px, py, px + vNorm.x*80/zoom, py + vNorm.y*80/zoom);
+
+                // 입사/반사 벡터
+                let vInc = createVector(r.path[0].x - px, r.path[0].y - py).normalize();
+                let vRef = createVector(r.path[2].x - px, r.path[2].y - py).normalize();
+                
+                let angleDeg = degrees(acos(vInc.dot(vNorm))).toFixed(1);
+
+                // 호 그리기
+                let rArc = 45 / zoom;
+                noFill(); stroke(255, 100, 0, 180); strokeWeight(2/zoom);
+                let drawArc = (v1, v2) => {
+                    let a1 = v1.heading(); let a2 = v2.heading();
+                    let start = min(a1, a2); let stop = max(a1, a2);
+                    if (stop - start > PI) { start = stop; stop = min(a1,a2) + TWO_PI; }
+                    arc(px, py, rArc*2, rArc*2, start, stop);
+                };
+                drawArc(vNorm, vInc); drawArc(vNorm, vRef);
+
+                fill(255, 100, 0); noStroke(); textSize(14/zoom);
+                let txtInc = p5.Vector.add(vInc, vNorm).normalize().mult(70/zoom);
+                let txtRef = p5.Vector.add(vRef, vNorm).normalize().mult(70/zoom);
+                text(angleDeg + "°", px + txtInc.x, py + txtInc.y);
+                text(angleDeg + "°", px + txtRef.x, py + txtRef.y);
+            }
+
+            if (tail > r.totalDist) rays.splice(i, 1);
+        }
     }
 
     function setMode(m) {
@@ -246,53 +376,40 @@
         document.getElementById('tab1').classList.toggle('active', m === 1);
         document.getElementById('tab2').classList.toggle('active', m === 2);
         document.getElementById('tab3').classList.toggle('active', m === 3);
-        
-        // 다른 모드에서는 UI 숨김
-        document.getElementById('ui-layer').style.display = (m === 1) ? 'flex' : 'none';
-
+        document.getElementById('angleUi').style.display = (m === 3) ? 'flex' : 'none';
         updateInstruction();
+        updateInfoText();
     }
+
+    function toggleInfo() {
+        isInfoOpen = !isInfoOpen;
+        let btn = document.getElementById('infoToggleBtn');
+        let box = document.getElementById('infoBox');
+        if (isInfoOpen) { btn.innerText = "📖 개념 설명 끄기"; box.style.display = "block"; updateInfoText(); } 
+        else { btn.innerText = "📖 개념 설명 켜기"; box.style.display = "none"; }
+    }
+
+    function updateInfoText() { if (isInfoOpen) document.getElementById('infoBox').innerHTML = conceptTexts[mode]; }
 
     function updateInstruction() {
         let ins = document.getElementById('instructions');
-        if (mode === 1) {
-            ins.innerHTML = "휠: 확대/축소 | 우클릭 드래그: 이동<br>마우스 왼쪽 버튼을 누른 채 움직이면 <b>연필이 실을 당겨 타원의 자취</b>를 그립니다.<br><b>'실의 길이'</b>는 항상 <b>'초점 간 거리'</b>보다 길어야 타원이 그려집니다.";
-        } else if (mode === 2) {
-            ins.innerHTML = "타원의 정의를 시각적으로 학습하는 모드입니다."; // 추후 업데이트
-        } else if (mode === 3) {
-            ins.innerHTML = "타원의 광학적 성질을 시뮬레이션하는 모드입니다."; // 추후 업데이트
-        }
+        if (mode === 1) ins.innerHTML = "마우스를 <b>바깥쪽으로 팽팽하게 당긴 채</b> 둥글게 돌려보세요.<br>실의 최대 길이 밖으로 나가도 연필이 타원 궤도를 따라가며 그려집니다.";
+        else if (mode === 2) ins.innerHTML = "타원 위의 선을 <b>클릭하여 드래그</b> 해보세요.<br>어느 위치에 있든 두 초점까지의 거리 합이 일정함을 확인할 수 있습니다.";
+        else if (mode === 3) ins.innerHTML = "타원 내부를 <b>클릭하여 꾹 누르고 계세요.</b><br>광원(F1)에서 사방으로 뻗어나간 빛이 모두 초점(F2)으로 모이는 것을 볼 수 있습니다.";
     }
 
-    function resetData() { 
-        tracePoints = []; 
-    }
-    function mouseDragged() { 
-        if (mouseButton === RIGHT) { 
-            offsetX += mouseX - pmouseX; 
-            offsetY += mouseY - pmouseY; 
-        } 
-    }
-    function mouseWheel(event) { 
-        zoom = constrain(zoom - event.delta * 0.001, 0.2, 4); 
-        return false; 
-    }
-    // UI 영역 판정 (슬라이더 영역 포함)
+    function resetData() { tracePoints = []; activeAngle = null; rays = []; }
+    function mouseDragged() { if (mouseButton === RIGHT) { offsetX += mouseX - pmouseX; offsetY += mouseY - pmouseY; } }
+    function mouseWheel(event) { zoom = constrain(zoom - event.delta * 0.001, 0.2, 4); return false; }
+    
     function isOverUI() { 
-        let uiLayer = document.getElementById('ui-layer');
-        let uiRect = uiLayer.getBoundingClientRect();
-        
-        // 마우스가 UI 레이어 위에 있는지 확인 (화면 좌표 기준)
-        return mouseX > uiRect.left && mouseX < uiRect.right &&
-               mouseY > uiRect.top && mouseY < uiRect.bottom;
+        let inLeftMenu = mouseY < 220 && mouseX < 260;
+        let inRightInfo = isInfoOpen && (mouseX > width - 360 && mouseY < 400); 
+        return inLeftMenu || inRightInfo;
     } 
 
     function resetView() { zoom = 1.0; offsetX = 0; offsetY = 0; }
-    function drawGrid() {
-        stroke(240); strokeWeight(1/zoom);
-        for (let i = -2000; i < 2000; i += 50) line(i, -2000, i, 2000);
-        for (let j = -2000; j < 2000; j += 50) line(-2000, j, 2000, j);
-    }
+    function drawGrid() { stroke(240); strokeWeight(1/zoom); for (let i = -2000; i < 2000; i += 50) line(i, -2000, i, 2000); for (let j = -2000; j < 2000; j += 50) line(-2000, j, 2000, j); }
     function windowResized() { resizeCanvas(windowWidth, windowHeight); }
 </script>
 </body>
