@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>타원의 모든 것 by ET</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #f8f9fa; font-family: 'Pretendard', sans-serif; }
+        
+        #header { position: absolute; top: 0; width: 100%; background: #1a1a2e; color: white; text-align: center; padding: 12px 0; font-size: 24px; font-weight: 800; z-index: 1002; letter-spacing: 1px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        #header span { color: #00d2ff; font-size: 16px; font-weight: normal; margin-left: 8px; }
+        
+        #menu { position: absolute; top: 52px; width: 100%; display: flex; justify-content: center; background: rgba(255, 255, 255, 0.95); box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000; }
+        .tab { padding: 15px 25px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: bold; color: #555; transition: 0.3s; }
+        .tab.active { border-bottom: 3px solid #007bff; color: #007bff; }
+        
+        #ui-layer { position: absolute; top: 120px; left: 20px; z-index: 1001; display: flex; flex-direction: column; gap: 10px; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .ui-item { display: flex; align-items: center; gap: 8px; }
+        .ui-item label { font-size: 14px; font-weight: bold; color: #333; min-width: 90px; }
+
+        button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        button.reset { background: #ff3b30; margin-top: 10px; }
+        
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 150px;
+            height: 8px;
+            border-radius: 5px;
+            background: #d3d3d3;
+            outline: none;
+            opacity: 0.7;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+
+        input[type=range]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+
+        #instructions { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 12px 24px; border-radius: 30px; font-size: 14px; pointer-events: none; z-index: 1001; text-align: center; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+<div id="header">타원의 모든 것<span>by ET</span></div>
+
+<div id="menu">
+    <div id="tab1" class="tab active" onclick="setMode(1)">1. 자취 작도</div>
+    <div id="tab2" class="tab" onclick="setMode(2)">2. 정의 학습</div>
+    <div id="tab3" class="tab" onclick="setMode(3)">3. 광학 성질</div>
+</div>
+
+<div id="ui-layer">
+    <div class="ui-item">
+        <label for="focalDistSlider">초점 간 거리 (2c):</label>
+        <input type="range" id="focalDistSlider" min="50" max="400" value="200" step="10">
+        <span id="focalDistValue">200</span>
+    </div>
+    <div class="ui-item">
+        <label for="stringLenSlider">실의 길이 (2a):</label>
+        <input type="range" id="stringLenSlider" min="200" max="600" value="300" step="10">
+        <span id="stringLenValue">300</span>
+    </div>
+    <button id="resetBtn" class="reset" onclick="resetData()">자취 초기화</button>
+</div>
+
+<div id="instructions"></div>
+
+<script>
+    let mode = 1;
+    let zoom = 1.0;
+    let offsetX = 0, offsetY = 0;
+    
+    // 타원 관련 데이터
+    let f1, f2; // 두 초점
+    let c = 100; // 원점에서 초점까지의 거리 (2c는 초점 간 거리)
+    let a = 150; // 실의 절반 길이 (2a는 실의 총 길이)
+
+    let tracePoints = []; // 자취를 저장할 배열
+    let isDrawing = false; // 현재 자취를 그리고 있는지 여부
+
+    // UI 엘리먼트
+    let focalDistSlider, stringLenSlider;
+    let focalDistValueSpan, stringLenValueSpan;
+
+    function setup() {
+        createCanvas(windowWidth, windowHeight);
+        document.oncontextmenu = () => false; // 우클릭 메뉴 방지
+
+        // 초점 및 실 길이 초기 설정
+        f1 = createVector(-c, 0);
+        f2 = createVector(c, 0);
+
+        // UI 요소 연결
+        focalDistSlider = select('#focalDistSlider');
+        stringLenSlider = select('#stringLenSlider');
+        focalDistValueSpan = select('#focalDistValue');
+        stringLenValueSpan = select('#stringLenValue');
+
+        // 슬라이더 이벤트 리스너
+        focalDistSlider.input(() => {
+            c = focalDistSlider.value() / 2;
+            f1.x = -c;
+            f2.x = c;
+            focalDistValueSpan.html(focalDistSlider.value());
+            // 실의 길이가 초점 간 거리보다 항상 길도록 보정
+            if (stringLenSlider.value() <= focalDistSlider.value()) {
+                stringLenSlider.value(focalDistSlider.value() + 20);
+                stringLenValueSpan.html(stringLenSlider.value());
+                a = stringLenSlider.value() / 2;
+            }
+            resetData(); // 설정 변경 시 자취 초기화
+        });
+
+        stringLenSlider.input(() => {
+            a = stringLenSlider.value() / 2;
+            stringLenValueSpan.html(stringLenSlider.value());
+            // 실의 길이가 초점 간 거리보다 항상 길도록 보정
+            if (stringLenSlider.value() <= focalDistSlider.value()) {
+                stringLenSlider.value(focalDistSlider.value() + 20);
+                stringLenValueSpan.html(stringLenSlider.value());
+                a = stringLenSlider.value() / 2;
+            }
+            resetData(); // 설정 변경 시 자취 초기화
+        });
+
+        // 초기 UI 값 표시
+        focalDistValueSpan.html(focalDistSlider.value());
+        stringLenValueSpan.html(stringLenSlider.value());
+
+        updateInstruction();
+    }
+
+    function draw() {
+        background(255);
+        
+        push();
+        translate(width/2 + offsetX, height/2 + offsetY);
+        scale(zoom);
+        drawGrid();
+
+        if (mode === 1) runMode1();
+        // else if (mode === 2) runMode2();
+        // else if (mode === 3) runMode3();
+        
+        pop();
+    }
+
+    // --- 1번: 자취 작도 모드 (실과 연필) ---
+    function runMode1() {
+        let worldMX = (mouseX - width/2 - offsetX) / zoom;
+        let worldMY = (mouseY - height/2 - offsetY) / zoom;
+        let penPos = createVector(worldMX, worldMY);
+
+        // 두 초점 그리기 (못)
+        fill(0, 122, 255); noStroke();
+        ellipse(f1.x, f1.y, 15/zoom);
+        ellipse(f2.x, f2.y, 15/zoom);
+        textSize(16/zoom); textAlign(CENTER, CENTER); fill(0);
+        text("F1", f1.x, f1.y - 20/zoom);
+        text("F2", f2.x, f2.y - 20/zoom);
+
+        // 실의 흐느적거림 표현 (마우스가 눌리지 않았을 때)
+        if (!isDrawing) {
+            stroke(150, 150, 150, 100); strokeWeight(3/zoom); noFill();
+            beginShape();
+            vertex(f1.x, f1.y);
+            // 두 초점 사이의 중간 지점을 기준으로 베지에 곡선 그리기
+            let midX = (f1.x + f2.x) / 2;
+            let midY = (f1.y + f2.y) / 2 + (50 / zoom); // 살짝 아래로 처지게
+            quadraticVertex(midX, midY, f2.x, f2.y);
+            endShape();
+        }
+
+        // 마우스가 눌렸을 때 (연필이 실을 당길 때)
+        if (mouseIsPressed && mouseButton === LEFT && !isOverUI()) {
+            let d1 = p5.Vector.dist(penPos, f1);
+            let d2 = p5.Vector.dist(penPos, f2);
+
+            // 실의 길이가 팽팽하게 유지될 수 있는지 확인 (오차 범위 내)
+            if (abs(d1 + d2 - (a * 2)) < 5 / zoom) { 
+                isDrawing = true;
+                tracePoints.push(penPos.copy()); // 현재 연필 위치를 자취에 추가
+
+                // 팽팽한 실 그리기
+                stroke(50, 50, 50); strokeWeight(3/zoom);
+                line(f1.x, f1.y, penPos.x, penPos.y);
+                line(f2.x, f2.y, penPos.x, penPos.y);
+            } else {
+                // 실을 팽팽하게 당기지 못하는 경우, 흐느적거리는 실 + 연필만 표시
+                isDrawing = false;
+                stroke(150, 150, 150, 100); strokeWeight(3/zoom); noFill();
+                beginShape();
+                vertex(f1.x, f1.y);
+                let midX = (f1.x + f2.x) / 2;
+                let midY = (f1.y + f2.y) / 2 + (50 / zoom); 
+                quadraticVertex(midX, midY, f2.x, f2.y);
+                endShape();
+            }
+        } else {
+            isDrawing = false;
+        }
+
+        // 그려진 자취 그리기
+        noFill(); stroke(50, 50, 200); strokeWeight(3/zoom);
+        beginShape();
+        for (let p of tracePoints) {
+            vertex(p.x, p.y);
+        }
+        endShape();
+
+        // 연필 그리기
+        fill(100); noStroke(); ellipse(penPos.x, penPos.y, 10/zoom);
+        fill(200, 100, 0); noStroke(); rect(penPos.x - 2/zoom, penPos.y - 15/zoom, 4/zoom, 20/zoom);
+        
+        // 실의 길이가 초점 간 거리보다 짧으면 안내 메시지
+        if ((a * 2) <= (c * 2)) {
+            fill(255, 59, 48); noStroke(); textSize(18/zoom); textAlign(CENTER, BOTTOM);
+            text("경고: 실의 길이는 초점 간 거리보다 길어야 합니다!", 0, -height/2 + 150/zoom);
+        }
+    }
+
+    function mouseReleased() {
+        isDrawing = false;
+    }
+
+    function setMode(m) {
+        mode = m;
+        document.getElementById('tab1').classList.toggle('active', m === 1);
+        document.getElementById('tab2').classList.toggle('active', m === 2);
+        document.getElementById('tab3').classList.toggle('active', m === 3);
+        
+        // 다른 모드에서는 UI 숨김
+        document.getElementById('ui-layer').style.display = (m === 1) ? 'flex' : 'none';
+
+        updateInstruction();
+    }
+
+    function updateInstruction() {
+        let ins = document.getElementById('instructions');
+        if (mode === 1) {
+            ins.innerHTML = "휠: 확대/축소 | 우클릭 드래그: 이동<br>마우스 왼쪽 버튼을 누른 채 움직이면 <b>연필이 실을 당겨 타원의 자취</b>를 그립니다.<br><b>'실의 길이'</b>는 항상 <b>'초점 간 거리'</b>보다 길어야 타원이 그려집니다.";
+        } else if (mode === 2) {
+            ins.innerHTML = "타원의 정의를 시각적으로 학습하는 모드입니다."; // 추후 업데이트
+        } else if (mode === 3) {
+            ins.innerHTML = "타원의 광학적 성질을 시뮬레이션하는 모드입니다."; // 추후 업데이트
+        }
+    }
+
+    function resetData() { 
+        tracePoints = []; 
+    }
+    function mouseDragged() { 
+        if (mouseButton === RIGHT) { 
+            offsetX += mouseX - pmouseX; 
+            offsetY += mouseY - pmouseY; 
+        } 
+    }
+    function mouseWheel(event) { 
+        zoom = constrain(zoom - event.delta * 0.001, 0.2, 4); 
+        return false; 
+    }
+    // UI 영역 판정 (슬라이더 영역 포함)
+    function isOverUI() { 
+        let uiLayer = document.getElementById('ui-layer');
+        let uiRect = uiLayer.getBoundingClientRect();
+        
+        // 마우스가 UI 레이어 위에 있는지 확인 (화면 좌표 기준)
+        return mouseX > uiRect.left && mouseX < uiRect.right &&
+               mouseY > uiRect.top && mouseY < uiRect.bottom;
+    } 
+
+    function resetView() { zoom = 1.0; offsetX = 0; offsetY = 0; }
+    function drawGrid() {
+        stroke(240); strokeWeight(1/zoom);
+        for (let i = -2000; i < 2000; i += 50) line(i, -2000, i, 2000);
+        for (let j = -2000; j < 2000; j += 50) line(-2000, j, 2000, j);
+    }
+    function windowResized() { resizeCanvas(windowWidth, windowHeight); }
+</script>
+</body>
+</html>
