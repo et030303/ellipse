@@ -61,7 +61,7 @@
     <button id="resetBtn" class="reset" onclick="resetData()">데이터 초기화</button>
     <button onclick="resetView()">화면 위치 초기화</button>
     
-    <button id="lightSwitchBtn" class="switch" onclick="toggleLightSource()">💡 광원 변경 (현재: F<sub>1</sub>)</button>
+    <button id="lightSwitchBtn" class="switch" onclick="toggleLightSource()">💡 광원 변경 (현재: F₁)</button>
     <label id="angleUi">
         <input type="checkbox" id="angleCheck"> 입사각 / 반사각 보기
     </label>
@@ -139,6 +139,7 @@
         pop();
     }
 
+    // 아래첨자를 위한 유틸리티 함수 (캔버스 텍스트용)
     function drawSubText(mainText, subText, x, y, size, col) {
         push();
         fill(col || 0); noStroke();
@@ -164,8 +165,10 @@
 
         fill(0, 122, 255); noStroke();
         ellipse(-c, 0, 15/zoom); ellipse(c, 0, 15/zoom);
-        drawSubText("F", "1", -c, -15/zoom, 16/zoom);
-        drawSubText("F", "2", c, -15/zoom, 16/zoom);
+        
+        // 초점 아래첨자 적용
+        drawSubText("F", "₁", -c, -15/zoom, 16/zoom);
+        drawSubText("F", "₂", c, -15/zoom, 16/zoom);
 
         let d1 = dist(worldMX, worldMY, -c, 0);
         let d2 = dist(worldMX, worldMY, c, 0);
@@ -203,8 +206,8 @@
 
         let checkPts = [
             {x: 0, y: 0, label: "중심"},
-            {x: -c, y: 0, label: "F", sub: "1", prefix: "초점 "},
-            {x: c, y: 0, label: "F", sub: "2", prefix: "초점 "},
+            {x: -c, y: 0, label: "F", sub: "₁", prefix: "초점 "},
+            {x: c, y: 0, label: "F", sub: "₂", prefix: "초점 "},
             {x: a, y: 0, label: "장축 꼭짓점"},
             {x: -a, y: 0, label: "장축 꼭짓점"},
             {x: 0, y: b, label: "단축 꼭짓점"},
@@ -237,8 +240,8 @@
                 text(hoveredPt.label, hoveredPt.x, hoveredPt.y - 18/zoom);
             }
         } else {
-            drawSubText("F", "1", -c, -15/zoom, 12/zoom, 100);
-            drawSubText("F", "2", c, -15/zoom, 12/zoom, 100);
+            drawSubText("F", "₁", -c, -15/zoom, 12/zoom, 100);
+            drawSubText("F", "₂", c, -15/zoom, 12/zoom, 100);
         }
 
         if (mouseIsPressed && !isOverUI() && !hoveredPt) activeAngle = atan2(worldMY, worldMX);
@@ -252,11 +255,13 @@
             fill(34, 197, 94); noStroke(); ellipse(px, py, 12/zoom);
             
             fill(0); textSize(15/zoom); textAlign(CENTER);
-            text("d1: " + d1.toFixed(1), (-c + px)/2, py/2 - 10/zoom);
-            text("d2: " + d2.toFixed(1), (c + px)/2, py/2 - 10/zoom);
+            // 아래첨자 d₁, d₂ 적용
+            text("d₁: " + d1.toFixed(1), (-c + px)/2, py/2 - 10/zoom);
+            text("d₂: " + d2.toFixed(1), (c + px)/2, py/2 - 10/zoom);
             
             fill(255, 59, 48); textSize(18/zoom); textStyle(BOLD);
-            text("거리의 합 (d1+d2) = " + (d1+d2).toFixed(1) + " (일정)", 0, -b - 40/zoom);
+            // 거리의 합 텍스트에도 아래첨자 적용
+            text("거리의 합 (d₁ + d₂) = " + (d1+d2).toFixed(1) + " (일정)", 0, -b - 40/zoom);
             textStyle(NORMAL);
         }
     }
@@ -289,7 +294,9 @@
 
     function toggleLightSource() {
         activeLightSource = activeLightSource === 1 ? 2 : 1;
-        document.getElementById('lightSwitchBtn').innerHTML = `💡 광원 변경 (현재: F<sub>${activeLightSource}</sub>)`;
+        // HTML 버튼 텍스트의 아래첨자도 변경
+        let subNum = activeLightSource === 1 ? "₁" : "₂";
+        document.getElementById('lightSwitchBtn').innerHTML = `💡 광원 변경 (현재: F${subNum})`;
         rays = []; 
     }
 
@@ -307,8 +314,9 @@
         fill(255, 215, 0); noStroke(); ellipse(sourcePos, 0, 20/zoom); 
         fill(0, 122, 255); ellipse(targetPos, 0, 15/zoom); 
         
-        drawSubText("F", activeLightSource.toString(), sourcePos, -20/zoom, 16/zoom);
-        drawSubText("F", (activeLightSource === 1 ? 2 : 1).toString(), targetPos, -20/zoom, 16/zoom);
+        // 광학 모드 초점 아래첨자 적용
+        drawSubText("F", activeLightSource === 1 ? "₁" : "₂", sourcePos, -20/zoom, 16/zoom);
+        drawSubText("F", activeLightSource === 1 ? "₂" : "₁", targetPos, -20/zoom, 16/zoom);
 
         if (mouseIsPressed && mouseButton === LEFT && !isOverUI()) {
             if (frameCount % 10 === 0) {
@@ -318,7 +326,6 @@
                 
                 let bouncePath = [p_curr.copy()];
                 
-                // 정확히 2번만 부딪히고 원래 초점으로 돌아오도록 수정
                 for (let bounce = 0; bounce < 2; bounce++) {
                     let p_hit = getEllipseIntersection(p_curr.x, p_curr.y, dir.x, dir.y, a, b);
                     if (!p_hit) break;
@@ -348,7 +355,7 @@
         let speed = 25 / zoom;
         let beamLen = 100 / zoom; 
         let showAngle = document.getElementById('angleCheck').checked;
-        let angleDrawn = false; // 글씨 겹침(깜빡임) 방지를 위한 플래그
+        let angleDrawn = false; 
 
         for (let i = rays.length - 1; i >= 0; i--) {
             let r = rays[i];
@@ -377,9 +384,8 @@
             if (showAngle && r.path.length > 2) {
                 let k = 1; 
                 let hitDist = r.sumDists[k];
-                // 빛이 부딪힌 이후 광선이 사라질 때까지 각도 표시 (단, 가장 최근 것 1개만 그려 깜빡임 방지)
                 if (r.progress > hitDist && !angleDrawn) {
-                    angleDrawn = true; // 이번 프레임에서는 한 번만 렌더링하도록 락(lock)
+                    angleDrawn = true; 
                     
                     let px = r.path[k].x; let py = r.path[k].y;
                     let nx = px / (a*a); let ny = py / (b*b);
@@ -465,4 +471,3 @@
 </script>
 </body>
 </html>
-
