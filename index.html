@@ -167,12 +167,12 @@
         drawSubText("F", "1", -c, -15/zoom, 16/zoom);
         drawSubText("F", "2", c, -15/zoom, 16/zoom);
 
-        let d1 = dist(worldMX, worldMY, -c, 0);
-        let d2 = dist(worldMX, worldMY, c, 0);
+        let d₁ = dist(worldMX, worldMY, -c, 0);
+        let d₂ = dist(worldMX, worldMY, c, 0);
         let penX = worldMX; let penY = worldMY;
 
         if (mouseIsPressed && mouseButton === LEFT && !isOverUI()) {
-            if (d1 + d2 >= 2 * a) {
+            if (d₁ + d₂ >= 2 * a) {
                 let angle = atan2(worldMY, worldMX);
                 penX = a * cos(angle); penY = b * sin(angle);
                 tracePoints.push(createVector(penX, penY));
@@ -245,18 +245,18 @@
 
         if (activeAngle !== null) {
             let px = a * cos(activeAngle); let py = b * sin(activeAngle);
-            let d1 = dist(px, py, -c, 0); let d2 = dist(px, py, c, 0);
+            let d₁ = dist(px, py, -c, 0); let d₂ = dist(px, py, c, 0);
 
             stroke(34, 197, 94); strokeWeight(3/zoom);
             line(-c, 0, px, py); line(c, 0, px, py);
             fill(34, 197, 94); noStroke(); ellipse(px, py, 12/zoom);
             
             fill(0); textSize(15/zoom); textAlign(CENTER);
-            text("d1: " + d1.toFixed(1), (-c + px)/2, py/2 - 10/zoom);
-            text("d2: " + d2.toFixed(1), (c + px)/2, py/2 - 10/zoom);
+            text("d₁: " + d₁.toFixed(1), (-c + px)/2, py/2 - 10/zoom);
+            text("d₂: " + d₂.toFixed(1), (c + px)/2, py/2 - 10/zoom);
             
             fill(255, 59, 48); textSize(18/zoom); textStyle(BOLD);
-            text("거리의 합 (d1+d2) = " + (d1+d2).toFixed(1) + " (일정)", 0, -b - 40/zoom);
+            text("거리의 합 (d₁+d₂) = " + (d₁+d₂).toFixed(1) + " (일정)", 0, -b - 40/zoom);
             textStyle(NORMAL);
         }
     }
@@ -465,3 +465,4 @@
 </script>
 </body>
 </html>
+
