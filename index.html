@@ -206,15 +206,30 @@
         let worldMY = (mouseY - height/2 - offsetY) / zoom;
 
         // 1. x축, y축 그리기
+        // 헤더 및 메뉴 바 높이(약 105px)를 고려해 y축이 침범하지 않게 상단 한계점 계산
+        let topLimitY = (105 - height/2 - offsetY) / zoom;
+        let rightLimitX = (width - 25 - width/2 - offsetX) / zoom; // 우측 여백 고려
+
         stroke(100); strokeWeight(1.5/zoom);
-        line(-2000, 0, 2000, 0); 
-        line(0, -2000, 0, 2000); 
+        line(-2000, 0, rightLimitX, 0); // x축 (오른쪽 화살표 전까지)
+        line(0, 2000, 0, topLimitY);    // y축 (위쪽 화살표 전까지)
+
+        // 축 화살표 그리기
+        fill(100); noStroke();
+        // x축 우측 화살표
+        triangle(rightLimitX, 0, rightLimitX - 12/zoom, -5/zoom, rightLimitX - 12/zoom, 5/zoom);
+        // y축 상단 화살표
+        triangle(0, topLimitY, -5/zoom, topLimitY + 12/zoom, 5/zoom, topLimitY + 12/zoom);
+
+        // 축 이름(x, y) 및 원점(O) 표시
+        fill(100); textSize(16/zoom); 
+        textAlign(LEFT, BASELINE);
+        text("x", rightLimitX - 15/zoom, -10/zoom);
+        text("y", 12/zoom, topLimitY + 15/zoom);
         
-        fill(100); noStroke(); textSize(16/zoom); textAlign(LEFT, BASELINE);
-        let screenRight = (width/2 - offsetX) / zoom - 30/zoom;
-        let screenTop = (-height/2 - offsetY) / zoom + 30/zoom;
-        text("x", screenRight, -10/zoom);
-        text("y", 10/zoom, screenTop);
+        // 원점 O (왼쪽 아래)
+        textAlign(RIGHT, TOP);
+        text("O", -6/zoom, 6/zoom);
 
         // 2. 타원 뼈대 그리기
         noFill(); stroke(180); strokeWeight(3/zoom);
@@ -232,7 +247,6 @@
 
         let hoveredPt = null;
         for (let pt of checkPts) {
-            // 인식 범위를 35로 키워 마우스가 빗나가지 않도록 수정
             if (dist(worldMX, worldMY, pt.x, pt.y) < 35/zoom) {
                 hoveredPt = pt; break;
             }
@@ -241,7 +255,7 @@
         // 마우스 클릭 시 거리 합 계산용
         if (mouseIsPressed && !isOverUI() && !hoveredPt) activeAngle = atan2(worldMY, worldMX);
 
-        // 3. 거리 합 계산 선 (hoveredPt 박스보다 아래에 그려지도록 순서 배치)
+        // 3. 거리 합 계산 선
         if (activeAngle !== null) {
             let px = a * cos(activeAngle); let py = b * sin(activeAngle);
             let d1 = dist(px, py, -c, 0); let d2 = dist(px, py, c, 0);
@@ -265,16 +279,14 @@
         ellipse(0, b, 8/zoom); ellipse(0, -b, 8/zoom); 
         fill(0, 122, 255); ellipse(-c, 0, 15/zoom); ellipse(c, 0, 15/zoom);
 
-        // 5. 마우스를 올렸을 때 나타나는 하이라이트 & 툴팁 정보 (가장 위에 그려짐)
+        // 5. 마우스를 올렸을 때 나타나는 하이라이트 & 툴팁 정보
         if (hoveredPt) {
             fill(255, 204, 0, 150); noStroke();
             ellipse(hoveredPt.x, hoveredPt.y, 45/zoom); 
             
-            // 툴팁 배경 박스 (텍스트가 다른 선에 가려지지 않게 흰색 배경 추가)
             fill(255, 255, 255, 240); stroke(0, 100, 200); strokeWeight(2/zoom);
             rect(hoveredPt.x - 70/zoom, hoveredPt.y - 70/zoom, 140/zoom, 50/zoom, 8/zoom);
 
-            // 툴팁 내부: 명칭 표시
             fill(0); noStroke(); textSize(14/zoom);
             if (hoveredPt.sub) {
                 textAlign(RIGHT, BASELINE); text(hoveredPt.prefix, hoveredPt.x - 8/zoom, hoveredPt.y - 45/zoom);
@@ -284,13 +296,11 @@
                 text(hoveredPt.label, hoveredPt.x, hoveredPt.y - 45/zoom);
             }
             
-            // 툴팁 내부: 좌표값 표시
             fill(0, 100, 200); textSize(15/zoom); textAlign(CENTER, BASELINE); textStyle(BOLD);
             text(hoveredPt.coord, hoveredPt.x, hoveredPt.y - 25/zoom);
             textStyle(NORMAL);
 
         } else {
-            // 기본 초점 F1, F2 기호
             drawSubText("F", "₁", -c, -15/zoom, 12/zoom, 100);
             drawSubText("F", "₂", c, -15/zoom, 12/zoom, 100);
         }
