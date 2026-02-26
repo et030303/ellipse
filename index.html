@@ -34,7 +34,6 @@
         #infoBox { display: none; position: absolute; top: 120px; right: 20px; width: 320px; background: rgba(255, 255, 255, 0.95); padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border-left: 5px solid #17a2b8; font-size: 14px; line-height: 1.6; color: #333; z-index: 1001; }
         #infoBox h3 { margin-top: 0; margin-bottom: 12px; color: #17a2b8; font-size: 18px; }
 
-        /* 수식 및 좌표 표시용 박스 */
         #mathBox { display: none; position: absolute; top: 350px; left: 20px; background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #007bff; font-size: 14px; line-height: 1.6; color: #333; z-index: 1001; min-width: 220px; }
 
         #instructions { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 12px 24px; border-radius: 30px; font-size: 14px; pointer-events: none; z-index: 1001; text-align: center; line-height: 1.5; white-space: nowrap; }
@@ -73,7 +72,6 @@
 </div>
 
 <div id="mathBox"></div>
-
 <div id="infoBox"></div>
 <div id="instructions"></div>
 
@@ -93,7 +91,7 @@
     let isInfoOpen = false;
     const conceptTexts = {
         1: "<h3>자취 작도 원리</h3>타원은 <b>두 초점으로부터의 거리의 합이 일정한 점들의 집합</b>입니다.<br><br>• <b>파란색 점</b>: 고정된 두 개의 못(초점)<br>• <b>실의 길이</b>: 타원의 장축(가장 긴 지름) 길이와 같습니다.<br><br>마우스(연필)로 실을 바깥쪽으로 팽팽하게 당기면서 빙~ 둘러보세요. 자연스럽게 타원이 그려집니다.",
-        2: "<h3>타원의 정의</h3>어느 위치에 있든 <b>두 초점까지의 거리의 합이 항상 일정(2a)</b>합니다.<br><br>마우스(또는 손가락)를 꼭짓점이나 초점 근처에 올려보세요. 각 명칭과 함께 <b>정확한 좌표</b>가 나타납니다.",
+        2: "<h3>타원의 정의</h3>어느 위치에 있든 <b>두 초점까지의 거리의 합이 항상 일정(2a)</b>합니다.<br><br>마우스(또는 손가락)를 꼭짓점이나 초점에 올려보세요. 각 명칭과 함께 <b>정확한 좌표</b>가 나타납니다.",
         3: "<h3>타원의 광학적 성질</h3>타원 내부에서 한 초점(광원)을 향해 쏜 빛이나 소리는 타원 벽면에 반사된 후, <b>반드시 다른 쪽 초점을 통과</b>합니다.<br><br>이 빛은 멈추지 않고 반대쪽 벽에 <b>계속 반사되며 두 초점을 번갈아 통과</b>하는 물리적 궤적을 그립니다."
     };
 
@@ -207,69 +205,43 @@
         let worldMX = (mouseX - width/2 - offsetX) / zoom;
         let worldMY = (mouseY - height/2 - offsetY) / zoom;
 
-        // 2번 모드 전용 진한 x축, y축 그리기
+        // 1. x축, y축 그리기
         stroke(100); strokeWeight(1.5/zoom);
-        line(-2000, 0, 2000, 0); // x축
-        line(0, -2000, 0, 2000); // y축
+        line(-2000, 0, 2000, 0); 
+        line(0, -2000, 0, 2000); 
         
-        // 축 기호 표시 (x, y)
         fill(100); noStroke(); textSize(16/zoom); textAlign(LEFT, BASELINE);
         let screenRight = (width/2 - offsetX) / zoom - 30/zoom;
         let screenTop = (-height/2 - offsetY) / zoom + 30/zoom;
         text("x", screenRight, -10/zoom);
         text("y", 10/zoom, screenTop);
 
+        // 2. 타원 뼈대 그리기
         noFill(); stroke(180); strokeWeight(3/zoom);
         ellipse(0, 0, 2*a, 2*b);
 
-        // 꼭짓점 및 초점 데이터 (수학 좌표계 기준)
+        // 꼭짓점 및 초점 데이터
         let checkPts = [
             {x: -c, y: 0, label: "F", sub: "₁", prefix: "초점 ", coord: `(${-c.toFixed(1)}, 0)`},
             {x: c, y: 0, label: "F", sub: "₂", prefix: "초점 ", coord: `(${c.toFixed(1)}, 0)`},
             {x: a, y: 0, label: "장축 꼭짓점", coord: `(${a.toFixed(1)}, 0)`},
             {x: -a, y: 0, label: "장축 꼭짓점", coord: `(${-a.toFixed(1)}, 0)`},
-            {x: 0, y: -b, label: "단축 꼭짓점", coord: `(0, ${b.toFixed(1)})`}, // 위쪽 (p5의 -y는 수학의 +y)
-            {x: 0, y: b, label: "단축 꼭짓점", coord: `(0, ${-b.toFixed(1)})`}  // 아래쪽
+            {x: 0, y: -b, label: "단축 꼭짓점", coord: `(0, ${b.toFixed(1)})`}, 
+            {x: 0, y: b, label: "단축 꼭짓점", coord: `(0, ${-b.toFixed(1)})`}  
         ];
 
         let hoveredPt = null;
         for (let pt of checkPts) {
-            if (dist(worldMX, worldMY, pt.x, pt.y) < 25/zoom) {
+            // 인식 범위를 35로 키워 마우스가 빗나가지 않도록 수정
+            if (dist(worldMX, worldMY, pt.x, pt.y) < 35/zoom) {
                 hoveredPt = pt; break;
             }
         }
 
-        // 점들 그리기
-        fill(100); noStroke();
-        ellipse(a, 0, 8/zoom); ellipse(-a, 0, 8/zoom); 
-        ellipse(0, b, 8/zoom); ellipse(0, -b, 8/zoom); 
-        fill(0, 122, 255); ellipse(-c, 0, 15/zoom); ellipse(c, 0, 15/zoom);
-
-        if (hoveredPt) {
-            // 마우스 오버 시 효과
-            fill(255, 204, 0, 100); noStroke();
-            ellipse(hoveredPt.x, hoveredPt.y, 35/zoom); 
-            
-            fill(0); textSize(15/zoom);
-            if (hoveredPt.sub) {
-                textAlign(RIGHT, BASELINE); text(hoveredPt.prefix, hoveredPt.x - 10/zoom, hoveredPt.y - 35/zoom);
-                drawSubText(hoveredPt.label, hoveredPt.sub, hoveredPt.x + 15/zoom, hoveredPt.y - 35/zoom, 15/zoom);
-            } else {
-                textAlign(CENTER, BASELINE);
-                text(hoveredPt.label, hoveredPt.x, hoveredPt.y - 35/zoom);
-            }
-            
-            // 좌표값 표시
-            fill(0, 100, 200); textSize(14/zoom); textAlign(CENTER, BASELINE);
-            text(hoveredPt.coord, hoveredPt.x, hoveredPt.y - 15/zoom);
-
-        } else {
-            drawSubText("F", "₁", -c, -15/zoom, 12/zoom, 100);
-            drawSubText("F", "₂", c, -15/zoom, 12/zoom, 100);
-        }
-
+        // 마우스 클릭 시 거리 합 계산용
         if (mouseIsPressed && !isOverUI() && !hoveredPt) activeAngle = atan2(worldMY, worldMX);
 
+        // 3. 거리 합 계산 선 (hoveredPt 박스보다 아래에 그려지도록 순서 배치)
         if (activeAngle !== null) {
             let px = a * cos(activeAngle); let py = b * sin(activeAngle);
             let d1 = dist(px, py, -c, 0); let d2 = dist(px, py, c, 0);
@@ -285,6 +257,42 @@
             fill(255, 59, 48); textSize(18/zoom); textStyle(BOLD);
             text("거리의 합 (d₁ + d₂) = " + (d1+d2).toFixed(1) + " (일정)", 0, -b - 40/zoom);
             textStyle(NORMAL);
+        }
+
+        // 4. 점들 기본 그리기
+        fill(100); noStroke();
+        ellipse(a, 0, 8/zoom); ellipse(-a, 0, 8/zoom); 
+        ellipse(0, b, 8/zoom); ellipse(0, -b, 8/zoom); 
+        fill(0, 122, 255); ellipse(-c, 0, 15/zoom); ellipse(c, 0, 15/zoom);
+
+        // 5. 마우스를 올렸을 때 나타나는 하이라이트 & 툴팁 정보 (가장 위에 그려짐)
+        if (hoveredPt) {
+            fill(255, 204, 0, 150); noStroke();
+            ellipse(hoveredPt.x, hoveredPt.y, 45/zoom); 
+            
+            // 툴팁 배경 박스 (텍스트가 다른 선에 가려지지 않게 흰색 배경 추가)
+            fill(255, 255, 255, 240); stroke(0, 100, 200); strokeWeight(2/zoom);
+            rect(hoveredPt.x - 70/zoom, hoveredPt.y - 70/zoom, 140/zoom, 50/zoom, 8/zoom);
+
+            // 툴팁 내부: 명칭 표시
+            fill(0); noStroke(); textSize(14/zoom);
+            if (hoveredPt.sub) {
+                textAlign(RIGHT, BASELINE); text(hoveredPt.prefix, hoveredPt.x - 8/zoom, hoveredPt.y - 45/zoom);
+                drawSubText(hoveredPt.label, hoveredPt.sub, hoveredPt.x + 12/zoom, hoveredPt.y - 45/zoom, 14/zoom);
+            } else {
+                textAlign(CENTER, BASELINE);
+                text(hoveredPt.label, hoveredPt.x, hoveredPt.y - 45/zoom);
+            }
+            
+            // 툴팁 내부: 좌표값 표시
+            fill(0, 100, 200); textSize(15/zoom); textAlign(CENTER, BASELINE); textStyle(BOLD);
+            text(hoveredPt.coord, hoveredPt.x, hoveredPt.y - 25/zoom);
+            textStyle(NORMAL);
+
+        } else {
+            // 기본 초점 F1, F2 기호
+            drawSubText("F", "₁", -c, -15/zoom, 12/zoom, 100);
+            drawSubText("F", "₂", c, -15/zoom, 12/zoom, 100);
         }
     }
 
@@ -454,7 +462,6 @@
         document.getElementById('angleUi').style.display = (m === 3) ? 'flex' : 'none';
         document.getElementById('lightSwitchBtn').style.display = (m === 3) ? 'block' : 'none';
         
-        // 2번 모드일 때만 수식 박스 표시
         document.getElementById('mathBox').style.display = (m === 2) ? 'block' : 'none';
         
         updateInstruction();
@@ -472,7 +479,6 @@
 
     function updateInfoText() { if (isInfoOpen) document.getElementById('infoBox').innerHTML = conceptTexts[mode]; }
 
-    // 수식 업데이트 함수
     function updateMathBox() {
         if (mode !== 2) return;
         let b = Math.sqrt(a*a - c*c);
